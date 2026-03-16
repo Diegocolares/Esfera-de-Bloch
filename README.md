@@ -72,7 +72,7 @@ Ao final da execução, será gerado um arquivo GIF com a animação:
 bloch_quantum_clean.gif
 ```
 <p align="center">
-  <img src="bloch.png" width="700">
+  <img src="comp quant .png" width="700">
 </p>
 ---
 
