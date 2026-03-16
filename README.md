@@ -99,3 +99,5 @@ Se quiser, também posso te ajudar a **melhorar ainda mais o README para parecer
 * GIF incorporado no README
 * seções mais profissionais (Citation, License, Demo)
 * estilo usado em projetos de **quantum computing no GitHub**.
+
+* 
