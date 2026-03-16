@@ -71,7 +71,7 @@ Ao final da execução, será gerado um arquivo GIF com a animação:
 ```
 bloch_quantum_clean.gif
 ```
-
+![Bloch Sphere](comp quant .png) 
 ---
 
 ## Aplicações
@@ -84,20 +84,3 @@ Este projeto pode ser utilizado em diversos contextos:
 * divulgação científica
 * material educacional em física quântica
 
----
-
-## Autor
-
-**Diego da Mota Colares**
-Físico — Doutor em Engenharia de Teleinformática
-
----
-
-Se quiser, também posso te ajudar a **melhorar ainda mais o README para parecer projeto de pesquisador internacional**, com:
-
-* badges do GitHub
-* GIF incorporado no README
-* seções mais profissionais (Citation, License, Demo)
-* estilo usado em projetos de **quantum computing no GitHub**.
-
-* 
