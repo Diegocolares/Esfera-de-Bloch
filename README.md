@@ -18,6 +18,12 @@ Além da visualização da esfera de Bloch, o projeto inclui **painéis informat
 
 Essa abordagem permite compreender não apenas a geometria da esfera de Bloch, mas também a relação entre a representação matemática do estado quântico e os resultados observáveis de uma medição.
 
+comp quant(1).gif
+<p align="center">
+  <img src="comp quant(1).gif" width="700">
+</p>
+---
+
 ---
 
 ## Conceitos Demonstrados
@@ -71,10 +77,7 @@ Ao final da execução, será gerado um arquivo GIF com a animação:
 ```
 bloch_quantum_clean.gif
 ```
-<p align="center">
-  <img src="comp quant .png" width="700">
-</p>
----
+
 
 ## Aplicações
 
