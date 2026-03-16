@@ -71,7 +71,7 @@ Ao final da execução, será gerado um arquivo GIF com a animação:
 ```
 bloch_quantum_clean.gif
 ```
-![Bloch Sphere](comp quant .png) 
+![Bloch Sphere](comp quant.png) 
 ---
 
 ## Aplicações
