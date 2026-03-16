@@ -1,0 +1,385 @@
+# ============================================================
+# BLOCH SPHERE ANIMATION - VISUAL ORGANIZADO
+# Google Colab ready
+# ============================================================
+
+# !pip -q install imageio
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation, PillowWriter
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+from matplotlib.patches import FancyBboxPatch, Rectangle
+from IPython.display import Image, display
+import matplotlib.patheffects as pe
+
+# -----------------------------
+# CONFIGURAÇÕES
+# -----------------------------
+np.random.seed(42)
+
+GIF_NAME = "bloch_quantum_clean.gif"
+FPS = 20
+N_FRAMES = 220
+COLLAPSE_FRAME = 150
+FIGSIZE = (16, 9)
+DPI = 120
+
+# Cores
+BG = "#081018"
+FG = "#EAF2FF"
+ACCENT1 = "#61DAFB"   # azul ciano
+ACCENT2 = "#FF4D8D"   # magenta
+ACCENT3 = "#F7D154"   # dourado
+ACCENT4 = "#8BFFB5"   # verde claro
+MUTED = "#B7C6D9"
+GRID = "#37506B"
+
+plt.rcParams["figure.facecolor"] = BG
+plt.rcParams["axes.facecolor"] = BG
+plt.rcParams["savefig.facecolor"] = BG
+plt.rcParams["text.color"] = FG
+plt.rcParams["axes.labelcolor"] = FG
+plt.rcParams["xtick.color"] = FG
+plt.rcParams["ytick.color"] = FG
+plt.rcParams["font.size"] = 11
+
+# -----------------------------
+# FUNÇÕES QUÂNTICAS
+# -----------------------------
+def state_vector(theta, phi):
+    alpha = np.cos(theta / 2)
+    beta = np.exp(1j * phi) * np.sin(theta / 2)
+    return alpha, beta
+
+def bloch_coords(theta, phi):
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    return x, y, z
+
+def probabilities(alpha, beta):
+    return np.abs(alpha) ** 2, np.abs(beta) ** 2
+
+def choose_measurement(p0):
+    return 0 if np.random.rand() < p0 else 1
+
+def theta_t(k):
+    return np.pi/2 + 0.72 * np.sin(2*np.pi*k/95.0) + 0.18*np.sin(2*np.pi*k/31.0)
+
+def phi_t(k):
+    return 2*np.pi*k/42.0 + 0.55*np.sin(2*np.pi*k/57.0)
+
+# -----------------------------
+# MEDIÇÃO
+# -----------------------------
+theta_c = theta_t(COLLAPSE_FRAME)
+phi_c = phi_t(COLLAPSE_FRAME)
+alpha_c, beta_c = state_vector(theta_c, phi_c)
+p0_c, p1_c = probabilities(alpha_c, beta_c)
+measured = choose_measurement(p0_c)
+
+if measured == 0:
+    final_theta, final_phi = 0.0, 0.0
+    alpha_post, beta_post = 1+0j, 0+0j
+    p0_post, p1_post = 1.0, 0.0
+else:
+    final_theta, final_phi = np.pi, 0.0
+    alpha_post, beta_post = 0+0j, 1+0j
+    p0_post, p1_post = 0.0, 1.0
+
+x_final, y_final, z_final = bloch_coords(final_theta, final_phi)
+
+# -----------------------------
+# FIGURA / GRID MELHORADO
+# -----------------------------
+fig = plt.figure(figsize=FIGSIZE, dpi=DPI)
+
+# Layout com mais respiro
+gs = fig.add_gridspec(
+    nrows=12, ncols=16,
+    left=0.04, right=0.98, top=0.92, bottom=0.07,
+    wspace=0.55, hspace=0.55
+)
+
+ax_bloch = fig.add_subplot(gs[:, :8], projection="3d")
+ax_top = fig.add_subplot(gs[0:5, 9:16])      # clássico vs quântico
+ax_prob = fig.add_subplot(gs[5:8, 9:16])     # probabilidades
+ax_math = fig.add_subplot(gs[8:12, 9:16])    # matemática
+
+
+# -----------------------------
+# UTILITÁRIOS VISUAIS
+# -----------------------------
+def neon_text(ax, x, y, s, color=FG, size=14, weight="normal", ha="center", transform=None):
+    if transform is None:
+        transform = ax.transAxes
+    txt = ax.text(
+        x, y, s,
+        color=color,
+        fontsize=size,
+        fontweight=weight,
+        ha=ha,
+        va="center",
+        transform=transform
+    )
+    txt.set_path_effects([
+        pe.Stroke(linewidth=2.0, foreground=color, alpha=0.12),
+        pe.Normal()
+    ])
+    return txt
+
+def rounded_box(ax, x, y, w, h, edgecolor, facealpha=0.03, radius=0.04, lw=1.8):
+    box = FancyBboxPatch(
+        (x, y), w, h,
+        boxstyle=f"round,pad=0.02,rounding_size={radius}",
+        linewidth=lw,
+        edgecolor=edgecolor,
+        facecolor=(1, 1, 1, facealpha),
+        transform=ax.transAxes
+    )
+    ax.add_patch(box)
+    return box
+
+# -----------------------------
+# BLOCH
+# -----------------------------
+def setup_bloch(ax):
+    ax.cla()
+    ax.set_facecolor(BG)
+
+    u = np.linspace(0, 2*np.pi, 90)
+    v = np.linspace(0, np.pi, 45)
+    xs = np.outer(np.cos(u), np.sin(v))
+    ys = np.outer(np.sin(u), np.sin(v))
+    zs = np.outer(np.ones_like(u), np.cos(v))
+
+    ax.plot_surface(xs, ys, zs, alpha=0.08, linewidth=0, color=ACCENT1)
+
+    t = np.linspace(0, 2*np.pi, 300)
+    ax.plot(np.cos(t), np.sin(t), 0*t, color=GRID, lw=1.0, alpha=0.8)
+    ax.plot(np.cos(t), 0*t, np.sin(t), color=GRID, lw=1.0, alpha=0.6)
+    ax.plot(0*t, np.cos(t), np.sin(t), color=GRID, lw=1.0, alpha=0.6)
+
+    ax.plot([-1.15, 1.15], [0, 0], [0, 0], color=FG, lw=1.1, alpha=0.7)
+    ax.plot([0, 0], [-1.15, 1.15], [0, 0], color=FG, lw=1.1, alpha=0.7)
+    ax.plot([0, 0], [0, 0], [-1.15, 1.15], color=FG, lw=1.1, alpha=0.7)
+
+    ax.text(0, 0, 1.22, r"$|0\rangle$", color=ACCENT4, fontsize=16, ha="center")
+    ax.text(0, 0, -1.28, r"$|1\rangle$", color=ACCENT2, fontsize=16, ha="center")
+    ax.text(1.23, 0, 0, r"$x$", color=FG, fontsize=12, ha="center")
+    ax.text(0, 1.23, 0, r"$y$", color=FG, fontsize=12, ha="center")
+    ax.text(0, 0, 1.34, r"$z$", color=FG, fontsize=12, ha="center")
+
+    ax.set_xlim([-1.22, 1.22])
+    ax.set_ylim([-1.22, 1.22])
+    ax.set_zlim([-1.22, 1.22])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_title("Esfera de Bloch", color=FG, pad=14, fontsize=20)
+
+    ax.xaxis.pane.set_alpha(0.0)
+    ax.yaxis.pane.set_alpha(0.0)
+    ax.zaxis.pane.set_alpha(0.0)
+
+# -----------------------------
+# PAINEL SUPERIOR
+# -----------------------------
+def draw_top_panel(ax):
+    ax.cla()
+    ax.set_facecolor(BG)
+    ax.axis("off")
+
+    neon_text(ax, 0.5, 0.92, "Clássico vs Quântico", color=ACCENT3, size=20, weight="bold")
+
+    rounded_box(ax, 0.05, 0.35, 0.40, 0.42, ACCENT2)
+    rounded_box(ax, 0.55, 0.35, 0.40, 0.42, ACCENT1)
+
+    ax.text(0.25, 0.72, "Computação clássica", ha="center", fontsize=17, color=ACCENT2, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.25, 0.57, "Bit assume", ha="center", fontsize=13, color=FG, transform=ax.transAxes)
+    ax.text(0.25, 0.47, "0 ou 1", ha="center", fontsize=28, color=FG, fontweight="bold", transform=ax.transAxes)
+
+    ax.text(0.75, 0.72, "Computação quântica", ha="center", fontsize=17, color=ACCENT1, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.75, 0.58, "Qubit em superposição", ha="center", fontsize=13, color=FG, transform=ax.transAxes)
+    ax.text(0.75, 0.46, r"$|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$", ha="center", fontsize=22, color=FG, transform=ax.transAxes)
+
+    neon_text(ax, 0.5, 0.24, "Vantagem quântica conceitual", color=ACCENT4, size=16, weight="bold")
+    ax.text(
+        0.5, 0.11,
+        "superposição + fase relativa + interferência permitem manipular amplitudes\n"
+        "de probabilidade de modo inacessível ao bit clássico isolado",
+        ha="center", va="center", fontsize=12.5, color=MUTED, transform=ax.transAxes
+    )
+
+# -----------------------------
+# PAINEL DE PROBABILIDADES
+# -----------------------------
+def draw_prob_panel(ax, p0, p1, measured_result=None, collapse_strength=0.0):
+    ax.cla()
+    ax.set_facecolor(BG)
+    ax.axis("off")
+
+    neon_text(ax, 0.5, 0.90, "Probabilidades de medição", color=ACCENT3, size=18, weight="bold")
+
+    # coordenadas em axes
+    base_y = 0.20
+    frame_h = 0.45
+    bar_w = 0.12
+
+    x0 = 0.20
+    x1 = 0.45
+
+    # molduras
+    ax.add_patch(Rectangle((x0, base_y), bar_w, frame_h, transform=ax.transAxes,
+                           ec=ACCENT4, fc=(1,1,1,0.03), lw=1.6))
+    ax.add_patch(Rectangle((x1, base_y), bar_w, frame_h, transform=ax.transAxes,
+                           ec=ACCENT2, fc=(1,1,1,0.03), lw=1.6))
+
+    # barras
+    ax.add_patch(Rectangle((x0, base_y), bar_w, frame_h * p0, transform=ax.transAxes,
+                           ec=None, fc=ACCENT4, alpha=0.75))
+    ax.add_patch(Rectangle((x1, base_y), bar_w, frame_h * p1, transform=ax.transAxes,
+                           ec=None, fc=ACCENT2, alpha=0.75))
+
+    ax.text(x0 + bar_w/2, 0.73, r"$P(0)$", ha="center", fontsize=16, color=ACCENT4, transform=ax.transAxes)
+    ax.text(x1 + bar_w/2, 0.73, r"$P(1)$", ha="center", fontsize=16, color=ACCENT2, transform=ax.transAxes)
+
+    ax.text(x0 + bar_w/2, 0.10, f"{p0:.3f}", ha="center", fontsize=14, color=FG, transform=ax.transAxes)
+    ax.text(x1 + bar_w/2, 0.10, f"{p1:.3f}", ha="center", fontsize=14, color=FG, transform=ax.transAxes)
+
+    if measured_result is not None:
+        rounded_box(ax, 0.66, 0.24, 0.28, 0.34, ACCENT3, facealpha=0.04, radius=0.04)
+        ax.text(0.80, 0.47, "Colapso", ha="center", fontsize=15, color=ACCENT3, fontweight="bold", transform=ax.transAxes)
+        ax.text(
+            0.80, 0.33, rf"$|{measured_result}\rangle$",
+            ha="center", fontsize=26, color=FG, fontweight="bold",
+            alpha=min(1.0, 0.35 + 0.65*collapse_strength),
+            transform=ax.transAxes
+        )
+
+# -----------------------------
+# PAINEL MATEMÁTICO
+# -----------------------------
+def draw_math_panel(ax, theta, phi, alpha, beta, p0, p1, collapse=False):
+    ax.cla()
+    ax.set_facecolor(BG)
+    ax.axis("off")
+
+    neon_text(ax, 0.5, 0.88, "Estado quântico e medição", color=ACCENT1, size=20, weight="bold")
+
+    eq1 = r"$|\psi\rangle=\cos\left(\frac{\theta}{2}\right)|0\rangle + e^{i\phi}\sin\left(\frac{\theta}{2}\right)|1\rangle$"
+    eq2 = rf"$\theta={theta:.3f}\,\mathrm{{rad}},\qquad \phi={phi:.3f}\,\mathrm{{rad}}$"
+    eq3 = rf"$\alpha={alpha.real:+.3f}{alpha.imag:+.3f}i,\qquad \beta={beta.real:+.3f}{beta.imag:+.3f}i$"
+    eq4 = rf"$P(0)=|\alpha|^2={p0:.3f},\qquad P(1)=|\beta|^2={p1:.3f}$"
+
+    ax.text(0.5, 0.66, eq1, ha="center", fontsize=17, color=FG, transform=ax.transAxes)
+    ax.text(0.5, 0.49, eq2, ha="center", fontsize=15, color=MUTED, transform=ax.transAxes)
+    ax.text(0.5, 0.33, eq3, ha="center", fontsize=15, color=MUTED, transform=ax.transAxes)
+    ax.text(0.5, 0.17, eq4, ha="center", fontsize=17, color=ACCENT3, transform=ax.transAxes)
+
+    info = (
+        "Antes da medição: o estado preserva coerência, fase relativa e superposição."
+        if not collapse else
+        "Após a medição: o estado é projetado em um autovetor da base computacional."
+    )
+    ax.text(0.5, -0.02, info, ha="center", fontsize=12.5, color=MUTED, transform=ax.transAxes)
+
+# -----------------------------
+# ANIMAÇÃO
+# -----------------------------
+trail_x, trail_y, trail_z = [], [], []
+
+def update(frame):
+    setup_bloch(ax_bloch)
+    draw_top_panel(ax_top)
+
+    collapse_phase = frame >= COLLAPSE_FRAME
+
+    if not collapse_phase:
+        theta = theta_t(frame)
+        phi = phi_t(frame)
+        alpha, beta = state_vector(theta, phi)
+        p0, p1 = probabilities(alpha, beta)
+        x, y, z = bloch_coords(theta, phi)
+
+        trail_x.append(x)
+        trail_y.append(y)
+        trail_z.append(z)
+
+        for i in range(1, len(trail_x)):
+            frac = i / len(trail_x)
+            ax_bloch.plot(
+                trail_x[i-1:i+1], trail_y[i-1:i+1], trail_z[i-1:i+1],
+                color=ACCENT1, lw=1.5 + 2.0*frac, alpha=0.08 + 0.45*frac
+            )
+
+        ax_bloch.quiver(0, 0, 0, x, y, z, color=ACCENT3, linewidth=3.0, arrow_length_ratio=0.10)
+        ax_bloch.scatter([x], [y], [z], s=90, color=ACCENT3, edgecolors=FG, linewidths=0.8)
+
+        ax_bloch.plot([x, x], [y, y], [z, -1], ls="--", lw=1.0, color=ACCENT4, alpha=0.45)
+        ax_bloch.plot([0, x], [0, y], [0, 0], ls=":", lw=1.2, color=ACCENT2, alpha=0.40)
+
+        ax_bloch.text(0, 0, -1.40, f"Evolução coerente • frame {frame}", color=FG, ha="center", fontsize=11)
+
+        draw_prob_panel(ax_prob, p0, p1, measured_result=None)
+        draw_math_panel(ax_math, theta, phi, alpha, beta, p0, p1, collapse=False)
+
+    else:
+        x0, y0, z0 = bloch_coords(theta_c, phi_c)
+
+        tau = min(1.0, (frame - COLLAPSE_FRAME) / 22.0)
+        smooth = 0.5 - 0.5 * np.cos(np.pi * tau)
+
+        x = (1 - smooth) * x0 + smooth * x_final
+        y = (1 - smooth) * y0 + smooth * y_final
+        z = (1 - smooth) * z0 + smooth * z_final
+
+        p0_show = (1 - smooth) * p0_c + smooth * p0_post
+        p1_show = (1 - smooth) * p1_c + smooth * p1_post
+
+        alpha_show = (1 - smooth) * alpha_c + smooth * alpha_post
+        beta_show = (1 - smooth) * beta_c + smooth * beta_post
+        theta_show = (1 - smooth) * theta_c + smooth * final_theta
+        phi_show = (1 - smooth) * phi_c + smooth * final_phi
+
+        for i in range(1, len(trail_x)):
+            frac = i / len(trail_x)
+            ax_bloch.plot(
+                trail_x[i-1:i+1], trail_y[i-1:i+1], trail_z[i-1:i+1],
+                color=ACCENT1, lw=1.2 + 1.8*frac, alpha=0.05 + 0.28*frac
+            )
+
+        ax_bloch.plot([x0, x_final], [y0, y_final], [z0, z_final], color=ACCENT2, lw=2.2, ls=":", alpha=0.8)
+        ax_bloch.quiver(
+            0, 0, 0, x, y, z,
+            color=ACCENT3 if measured == 0 else ACCENT2,
+            linewidth=3.2,
+            arrow_length_ratio=0.10
+        )
+        ax_bloch.scatter(
+            [x], [y], [z], s=130,
+            color=ACCENT3 if measured == 0 else ACCENT2,
+            edgecolors=FG, linewidths=1.0
+        )
+
+        ax_bloch.text(0, 0, -1.40, rf"Medição → colapso para $|{measured}\rangle$", color=FG, ha="center", fontsize=11)
+
+        draw_prob_panel(ax_prob, p0_show, p1_show, measured_result=measured, collapse_strength=smooth)
+        draw_math_panel(ax_math, theta_show, phi_show, alpha_show, beta_show, p0_show, p1_show, collapse=True)
+
+    ax_bloch.view_init(elev=22, azim=(40 + 0.95 * frame) % 360)
+    return []
+
+# -----------------------------
+# GERAR GIF
+# -----------------------------
+anim = FuncAnimation(fig, update, frames=N_FRAMES, interval=1000/FPS, blit=False)
+
+print("Gerando GIF...")
+anim.save(GIF_NAME, writer=PillowWriter(fps=FPS))
+plt.close(fig)
+
+print(f"GIF salvo em: {GIF_NAME}")
+display(Image(filename=GIF_NAME))
